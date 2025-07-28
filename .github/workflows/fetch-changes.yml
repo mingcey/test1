@@ -1,7 +1,7 @@
 name: Archive Packagist Changes
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时整点运行一次
+    - cron: '0 0,6,12,18 * * *'  # 每天 UTC 时间的 0:00, 6:00, 12:00, 18:00 运行
   workflow_dispatch:      # 支持手动触发
 
 jobs:
