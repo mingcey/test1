@@ -1,7 +1,7 @@
 name: Archive Packagist Changes
 on:
   schedule:
-    - cron: '0 * * * *'  # 每小时整点运行一次（例如 13:00, 14:00...）
+    - cron: '0 * * * *'  # 每小时整点运行一次
   workflow_dispatch:      # 支持手动触发
 
 jobs:
@@ -15,25 +15,36 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get last timestamp
+      - name: Get last timestamp (max 24h)
         id: last_timestamp
         run: |
-          # 获取已存储文件中最新的时间戳（格式：changes_2025-07-28_12-30-00.json）
-          LAST_FILE=$(ls -t changes/changes_*.json | head -1 2>/dev/null || true)
+          # 获取当前时间（UNIX 毫秒时间戳）
+          CURRENT_TS=$(date +%s%3N)
+          # 计算24小时前的毫秒时间戳
+          MIN_TS=$((CURRENT_TS - 86400000))  # 24h = 86400000ms
+
+          # 尝试获取最新文件的时间戳
+          LAST_FILE=$(ls -t changes/changes_*.json 2>/dev/null | head -1 || true)
           if [ -n "$LAST_FILE" ]; then
-            # 从文件名提取时间戳（去掉扩展名和前缀）
-            TIMESTAMP=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' '-')
-            # 转换为 Packagist 需要的 UNIX 毫秒时间戳（示例：1753695147000）
-            SINCE=$(date -d "$TIMESTAMP" +%s%3N)
+            # 从文件名提取时间（格式：changes_2025-07-28_12-30-00.json）
+            FILE_TIME=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' ' ')
+            # 转换为 UNIX 毫秒时间戳
+            FILE_TS=$(date -d "$FILE_TIME" +%s%3N)
+            
+            # 选择较大的时间戳（确保不超过24小时）
+            if [ $FILE_TS -lt $MIN_TS ]; then
+              SINCE=$MIN_TS
+            else
+              SINCE=$FILE_TS
+            fi
           else
-            # 如果没有历史文件，默认使用 24 小时前
-            SINCE=$(date -d "24 hours ago" +%s%3N)
+            # 如果没有历史文件，直接使用24小时前
+            SINCE=$MIN_TS
           fi
           echo "since=$SINCE" >> $GITHUB_OUTPUT
 
       - name: Fetch changes.json
         run: |
-          # 使用上一步获取的时间戳
           curl -s "https://packagist.org/metadata/changes.json?since=${{ steps.last_timestamp.outputs.since }}" \
             > "changes/changes_$(date +"%Y-%m-%d_%H-%M-%S").json"
 
