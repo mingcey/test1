@@ -22,13 +22,14 @@ jobs:
           CURRENT_TS=$(date +%s%3N)
           # 计算24小时前的毫秒时间戳
           MIN_TS=$((CURRENT_TS - 86400000))  # 24h = 86400000ms
-
+      
           # 尝试获取最新文件的时间戳
           LAST_FILE=$(ls -t changes/changes_*.json 2>/dev/null | head -1 || true)
           if [ -n "$LAST_FILE" ]; then
-            # 从文件名提取时间（格式：changes_2025-07-28_12-30-00.json）
-            FILE_TIME=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' ' ')
-            # 转换为 UNIX 毫秒时间戳
+            # 从文件名提取时间（格式：changes_2025-07-28_09-51-45.json）
+            # 替换下划线为空格，确保能被 date -d 解析
+            FILE_TIME=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' ' ' | tr '-' ':')
+            # 转换为 UNIX 毫秒时间戳（格式：2025-07-28 09:51:45）
             FILE_TS=$(date -d "$FILE_TIME" +%s%3N)
             
             # 选择较大的时间戳（确保不超过24小时）
