@@ -1,0 +1,29 @@
+name: Archive Packagist Changes
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # 每10分钟运行一次（GitHub允许的最短间隔）
+  workflow_dispatch:        # 支持手动触发
+
+jobs:
+  fetch-and-store:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fetch changes.json
+        run: |
+          # 获取当前时间戳作为文件名
+          TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+          curl -s "https://packagist.org/metadata/changes.json" > "changes/changes_$TIMESTAMP.json"
+          
+          # 可选：压缩历史文件以节省空间
+          find changes/ -name "*.json" -mtime +30 | xargs gzip
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add changes/
+          git commit -m "Update changes.json at $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
