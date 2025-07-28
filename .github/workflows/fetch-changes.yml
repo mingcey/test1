@@ -1,27 +1,41 @@
 name: Archive Packagist Changes
 on:
   schedule:
-    - cron: '*/10 * * * *'  # 每10分钟运行一次（GitHub允许的最短间隔）
-  workflow_dispatch:        # 支持手动触发
+    - cron: '0 * * * *'  # 每小时整点运行一次（例如 13:00, 14:00...）
+  workflow_dispatch:      # 支持手动触发
 
 jobs:
   fetch-and-store:
     runs-on: ubuntu-latest
-    permissions:  # 添加权限
+    permissions:
       contents: write  # 允许推送代码
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-            token: ${{ secrets.GITHUB_TOKEN }}  # 使用 GITHUB_TOKEN
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get last timestamp
+        id: last_timestamp
+        run: |
+          # 获取已存储文件中最新的时间戳（格式：changes_2025-07-28_12-30-00.json）
+          LAST_FILE=$(ls -t changes/changes_*.json | head -1 2>/dev/null || true)
+          if [ -n "$LAST_FILE" ]; then
+            # 从文件名提取时间戳（去掉扩展名和前缀）
+            TIMESTAMP=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' '-')
+            # 转换为 Packagist 需要的 UNIX 毫秒时间戳（示例：1753695147000）
+            SINCE=$(date -d "$TIMESTAMP" +%s%3N)
+          else
+            # 如果没有历史文件，默认使用 24 小时前
+            SINCE=$(date -d "24 hours ago" +%s%3N)
+          fi
+          echo "since=$SINCE" >> $GITHUB_OUTPUT
+
       - name: Fetch changes.json
         run: |
-          # 获取当前时间戳作为文件名
-          TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
-          curl -s "https://packagist.org/metadata/changes.json" > "changes/changes_$TIMESTAMP.json"
-          
-          # 可选：压缩历史文件以节省空间
-          find changes/ -name "*.json" -mtime +30 | xargs gzip
+          # 使用上一步获取的时间戳
+          curl -s "https://packagist.org/metadata/changes.json?since=${{ steps.last_timestamp.outputs.since }}" \
+            > "changes/changes_$(date +"%Y-%m-%d_%H-%M-%S").json"
 
       - name: Commit and push
         run: |
