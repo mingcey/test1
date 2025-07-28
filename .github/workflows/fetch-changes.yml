@@ -45,6 +45,7 @@ jobs:
 
       - name: Fetch changes.json
         run: |
+          echo "https://packagist.org/metadata/changes.json?since=${{ steps.last_timestamp.outputs.since }}"
           curl -s "https://packagist.org/metadata/changes.json?since=${{ steps.last_timestamp.outputs.since }}" \
             > "changes/changes_$(date +"%Y-%m-%d_%H-%M-%S").json"
 
