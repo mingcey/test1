@@ -27,10 +27,16 @@ jobs:
           LAST_FILE=$(ls -t changes/changes_*.json 2>/dev/null | head -1 || true)
           if [ -n "$LAST_FILE" ]; then
             # 从文件名提取时间（格式：changes_2025-07-28_09-51-45.json）
-            # 替换下划线为空格，确保能被 date -d 解析
-            FILE_TIME=$(basename "$LAST_FILE" .json | cut -d'_' -f2-3 | tr '_' ' ' | tr '-' ':')
-            # 转换为 UNIX 毫秒时间戳（格式：2025-07-28 09:51:45）
-            FILE_TS=$(date -d "$FILE_TIME" +%s%3N)
+            # 1. 提取日期和时间部分（去掉前缀和扩展名）
+            FILENAME=$(basename "$LAST_FILE" .json)
+            DATE_PART=$(echo "$FILENAME" | cut -d'_' -f2)  # 2025-07-28
+            TIME_PART=$(echo "$FILENAME" | cut -d'_' -f3)  # 09-51-45
+            # 2. 将时间部分的分隔符从 - 替换为 :
+            TIME_PART_FIXED=$(echo "$TIME_PART" | tr '-' ':')  # 09:51:45
+            # 3. 组合成标准格式：YYYY-MM-DD HH:MM:SS
+            STANDARD_TIME="$DATE_PART $TIME_PART_FIXED"
+            # 4. 转换为 UNIX 毫秒时间戳
+            FILE_TS=$(date -d "$STANDARD_TIME" +%s%3N)
             
             # 选择较大的时间戳（确保不超过24小时）
             if [ $FILE_TS -lt $MIN_TS ]; then
