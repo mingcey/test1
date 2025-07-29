@@ -1,1 +1,0 @@
-{"error":"Invalid or missing \u0022since\u0022 query parameter, make sure you store the timestamp at the initial point you started mirroring, then send that to begin receiving changes, e.g. https:\/\/packagist.org\/metadata\/changes.json?since=17536963020021 for example.","timestamp":17536963020021}
